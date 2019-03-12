@@ -16,7 +16,7 @@ type Logger interface {
 	// Errorf out error information
 	Errorf(format string, args ...interface{})
 	// WithField add additional field to Debugf/Errorf information
-	WithField(ket string, value interface{}) Logger
+	AddField(ket string, value interface{}) Logger
 }
 
 // "Do nothing" implementation of Logger interface
@@ -33,8 +33,8 @@ func (NullLogger) Errorf(format string, args ...interface{}) {
 }
 
 // "Do nothing" WithField
-func (NullLogger) WithField(key string, value interface{}) Logger {
-	return NullLogger{}
+func (NullLogger) AddField(key string, value interface{}) Logger {
+	return &NullLogger{}
 }
 
 // Simple implementation of Logger interface
@@ -71,7 +71,7 @@ func (logger *SimpleLogger) Errorf(format string, args ...interface{}) {
 }
 
 // Simple WithField
-func (logger *SimpleLogger) WithField(key string, value interface{}) Logger {
+func (logger *SimpleLogger) AddField(key string, value interface{}) Logger {
 	return &SimpleLogger{
 		parent: logger,
 		key:    key,
@@ -181,7 +181,7 @@ func (d *Dispatcher) Run(ctx context.Context, wg *sync.WaitGroup) {
 	d.log.Debugf("Starting workers...")
 	for i := 0; i < d.maxWorkers; i++ {
 		workerCtx, _ := context.WithCancel(ctx)
-		worker := newWorker(d.pool, d.log.WithField("worker", i))
+		worker := newWorker(d.pool, d.log.AddField("worker", i))
 		worker.start(workerCtx, nwg)
 	}
 	nwg.Add()
