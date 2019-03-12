@@ -15,7 +15,7 @@ type Logger interface {
 	Debugf(format string, args ...interface{})
 	// Errorf out error information
 	Errorf(format string, args ...interface{})
-	// WithField add additional field to Debugf/Errorf information
+	// AddField add additional field to Debugf/Errorf information
 	AddField(ket string, value interface{}) Logger
 }
 
