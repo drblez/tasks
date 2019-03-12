@@ -1,3 +1,5 @@
+[![GoDoc](https://godoc.org/github.com/drblez/tasks?status.svg)](https://godoc.org/github.com/drblez/tasks)
+
 # Simple task manager
 
 ## Example
