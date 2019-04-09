@@ -146,6 +146,8 @@ type Dispatcher struct {
 	payloadQueue chan job
 	maxWorkers   int
 	log          Logger
+	stopped      bool
+	quitOnEmpty  bool
 }
 
 func NewDispatcherDefault(log Logger) *Dispatcher {
@@ -178,14 +180,15 @@ func (d *Dispatcher) Run(ctx context.Context, wg *sync.WaitGroup) {
 	nwg := &nullableWaitGroup{
 		wg: wg,
 	}
+	baseWorkerCtx, workerCancel := context.WithCancel(ctx)
 	d.log.Debugf("Starting workers...")
 	for i := 0; i < d.maxWorkers; i++ {
-		workerCtx, _ := context.WithCancel(ctx)
+		workerCtx, _ := context.WithCancel(baseWorkerCtx)
 		worker := newWorker(d.pool, d.log.AddField("worker", i))
 		worker.start(workerCtx, nwg)
 	}
 	nwg.Add()
-	go d.dispatch(ctx, nwg)
+	go d.dispatch(ctx, nwg, workerCancel)
 }
 
 // Payload send payload to payload queue
@@ -193,8 +196,19 @@ func (d *Dispatcher) Payload(payloadFunc func() error) {
 	d.payloadQueue <- job{Payload: payloadFunc}
 }
 
-func (d *Dispatcher) dispatch(ctx context.Context, nwg *nullableWaitGroup) {
+// Len get length of payload queue
+func (d *Dispatcher) Len() int {
+	return len(d.payloadQueue)
+}
+
+// QuitOnEmpty set flag for quitting dispatcher when all works in payload queue is sent to workers
+func (d *Dispatcher) QuitOnEmpty() {
+	d.quitOnEmpty = true
+}
+
+func (d *Dispatcher) dispatch(ctx context.Context, nwg *nullableWaitGroup, workerCancel context.CancelFunc) {
 	defer nwg.Done()
+	defer workerCancel()
 	d.log.Debugf("Starting dispatching...")
 	for {
 		select {
@@ -210,6 +224,11 @@ func (d *Dispatcher) dispatch(ctx context.Context, nwg *nullableWaitGroup) {
 		case <-ctx.Done():
 			d.log.Debugf("Shutdown dispatcher...")
 			return
+		default:
+			if d.quitOnEmpty {
+				d.log.Debugf("All payload sent to workers. Quit...")
+				return
+			}
 		}
 	}
 }
