@@ -225,6 +225,7 @@ func (d *Dispatcher) dispatch(ctx context.Context, nwg *nullableWaitGroup, worke
 			d.log.Debugf("Shutdown dispatcher...")
 			return
 		default:
+			time.Sleep(1)
 			if d.quitOnEmpty && len(d.payloadQueue) == 0 {
 				d.log.Debugf("All payload sent to workers. Quit...")
 				return
